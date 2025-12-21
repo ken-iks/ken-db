@@ -16,7 +16,7 @@ func (tbl *Table) AddColumn(colName string, vectorLength int64) (*Column, error)
 	// Check if we need to grow the file for a new chunk
 	firstChunkOffset := GetDataCursorPos(b)
 	if firstChunkOffset+ChunkSize > int64(len(b)) {
-		if err := tbl.file.Grow(ChunkSize*4); err != nil {
+		if err := tbl.file.Grow(ChunkSize * 4); err != nil {
 			return nil, err
 		}
 		b = tbl.file.Bytes() // refresh after grow

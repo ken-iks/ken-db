@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"kendb/db"
 	"os"
-	"fmt"
 )
 
 func main() {
@@ -20,14 +20,14 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	nice.AddVector(0, []float32{5.,7.})
-	nice.AddVector(1, []float32{6.,6.})
-	nice.AddVector(2, []float32{7.,5.})
-	nice.AddVector(3, []float32{8.,4.})
-	nice.AddVector(4, []float32{9.,3.})
+	nice.AddVector(0, []float32{5., 7.})
+	nice.AddVector(1, []float32{6., 6.})
+	nice.AddVector(2, []float32{7., 5.})
+	nice.AddVector(3, []float32{8., 4.})
+	nice.AddVector(4, []float32{9., 3.})
 	nice.PrintColumnEntries()
 	vpool := db.VariablePool{}
-	nice.Select(1,4,"blah", vpool)
+	nice.Select(1, 4, "blah", vpool)
 	fmt.Println(nice.Fetch("blah", vpool))
 	conn.Close()
 }

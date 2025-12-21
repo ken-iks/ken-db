@@ -49,11 +49,11 @@ func (column *Column) AddVector(timestamp int64, vector []float32) error {
 	// and add the vector to it
 	newChunkPos := GetDataCursorPos(b)
 	// Check if file needs to grow
-	if newChunkPos + ChunkSize > int64(len(b)) {
-		if err := column.file.Grow(ChunkSize*4); err != nil {
+	if newChunkPos+ChunkSize > int64(len(b)) {
+		if err := column.file.Grow(ChunkSize * 4); err != nil {
 			return err
 		}
-		b = column.file.Bytes()  // refresh after grow
+		b = column.file.Bytes() // refresh after grow
 	}
 	header.nextChunk = newChunkPos
 
@@ -78,26 +78,26 @@ func (column *Column) AddVector(timestamp int64, vector []float32) error {
 }
 
 func (column *Column) forEach(fn func(idx int64, ts uint64, vec []float32)) {
-    b := column.file.Bytes()
-    entrySize := 8 + (column.meta.vectorLength * 4)
-    idx := int64(0)
+	b := column.file.Bytes()
+	entrySize := 8 + (column.meta.vectorLength * 4)
+	idx := int64(0)
 
-    currChunk := column.meta.firstChunkOffset
-    for currChunk != 0 {
-        header := ReadChunkHeader(b, currChunk)
-        for i := int64(0); i < header.numVectors; i++ {
-            entryOffset := currChunk + ChunkHeaderSize + (i * entrySize)
-            ts := ByteOrder.Uint64(b[entryOffset:])
-            vec := readVec(b[entryOffset+8:], int(column.meta.vectorLength))
-            fn(idx, ts, vec)
-            idx++
-        }
-        currChunk = header.nextChunk
-    }
+	currChunk := column.meta.firstChunkOffset
+	for currChunk != 0 {
+		header := ReadChunkHeader(b, currChunk)
+		for i := int64(0); i < header.numVectors; i++ {
+			entryOffset := currChunk + ChunkHeaderSize + (i * entrySize)
+			ts := ByteOrder.Uint64(b[entryOffset:])
+			vec := readVec(b[entryOffset+8:], int(column.meta.vectorLength))
+			fn(idx, ts, vec)
+			idx++
+		}
+		currChunk = header.nextChunk
+	}
 }
 
 func (column *Column) PrintColumnEntries() {
-    column.forEach(func(idx int64, ts uint64, vec []float32) {
-        fmt.Println("Timestamp:", ts, "Vector:", vec)
-    })
+	column.forEach(func(idx int64, ts uint64, vec []float32) {
+		fmt.Println("Timestamp:", ts, "Vector:", vec)
+	})
 }
