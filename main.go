@@ -11,9 +11,13 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	conn.AddTable("test1")
-	conn.AddTable("test2")
-	conn.AddTable("test3")
+	me, err := conn.AddTable("blah", 5)
+	if err != nil {
+		os.Exit(1)
+	}
+	me.AddColumn("foo", 10)
+	me.AddColumn("bar", 10)
 	fmt.Println(conn.ListTableNames())
+	fmt.Println(me.ListColumnNames())
 	conn.Close()
 }

@@ -21,7 +21,7 @@ func InitDB(filename string) (*DB, error) {
 		// initialize the file with 4MB of space
 		f.Truncate(int64(os.Getpagesize() * 1024))
 	} else {
-		f, fileErr = os.Open(path)
+		f, fileErr = os.OpenFile(path, os.O_RDWR, 0644)
 	}
 	if fileErr != nil {
 		slog.Error("Error, could not open or create file", "file", filename, "error", err)
@@ -29,21 +29,18 @@ func InitDB(filename string) (*DB, error) {
 	}
 	defer f.Close()
 
-	mapped, _ := mmap.Map(f, mmap.RDWR, 0)
-	cursorPos := ByteOrder.Uint64(mapped[:8])
-	numTables := ByteOrder.Uint64(mapped[8:16])
+	mapped, err := mmap.Map(f, mmap.RDWR, 0)
+	if err != nil {
+		slog.Error("Failed to mmap file", "file", filename, "error", err)
+		return nil, err
+	}
+	cursorPos := GetMetadataCursorPos(mapped)
 	if cursorPos == 0 {
-		if numTables != 0 {
-			panic("Invariant violated: Cursor position set to 0 but non zero num tables")
-		}
-
 		// this means we started a new file, so we set the write offset to 16,
 		// set the num tables to 0, and return an empty DB
-		ByteOrder.PutUint64(mapped[0:8], 16) // cursor at position 16
-		ByteOrder.PutUint64(mapped[8:16], 0) // num tables set to 0
+		ByteOrder.PutUint64(mapped[0:8], MetadataRegionStart) // cursor at position 16
+		ByteOrder.PutUint64(mapped[8:16], DataRegionStart) // data region starts 64MB in
 		return &DB{
-			numTables: 0,
-			cursorPos: 0,
 			tables: []*Table{},
 			mapped: mapped,
 		}, nil
@@ -51,18 +48,16 @@ func InitDB(filename string) (*DB, error) {
 
 	// In the case that the file already exists, we must load tables and columns
 	return &DB{
-		numTables: int64(numTables),
-		cursorPos: int64(cursorPos),
-		tables: loadTables(mapped, int64(numTables), int64(cursorPos)),
+		tables: loadTables(mapped),
 		mapped: mapped,
 	}, nil
 }
 
 // helper to load all table structs by traversing the mapped bytes
-func loadTables(mapped MMap, numTables int64, cursorPos int64) []*Table {
+func loadTables(mapped MMap) []*Table {
 	tables := []*Table{}
-	
-	offset := int64(16)
+	cursorPos := GetMetadataCursorPos(mapped)
+	offset := int64(MetadataRegionStart)
 	for offset < cursorPos {
 		currTable := Table{
 			meta: ReadTableMetadata(mapped, offset),
@@ -78,7 +73,6 @@ func loadTables(mapped MMap, numTables int64, cursorPos int64) []*Table {
 				mapped: mapped,
 			})
 			offset+=ColumnMetadataSize
-			offset+=(columnMeta.numVectors*columnMeta.vectorLength)
 		}
 		tables = append(tables, &currTable)
 	}
@@ -99,20 +93,25 @@ func (conn *DB) Close() error {
 }
 
 
-func (conn *DB) AddTable(tablename string) (*Table, error) {
+func (conn *DB) AddTable(tablename string, numColumns int) (*Table, error) {
+	cursorPos := GetMetadataCursorPos(conn.mapped)
 	meta := TableMetadata{
 		name: MakeName(tablename),
-		numColumns: 0,
-		offset: conn.cursorPos,
+		numColumns: int64(numColumns),
+		offset: cursorPos,
 	}
 	meta.WriteTo(conn.mapped)
-	conn.cursorPos += TableMetadataSize
+
 	newTable := Table{
 		meta: meta,
 		columns: []*Column{},
 		mapped: conn.mapped,
 	}
 	conn.tables = append(conn.tables, &newTable)
+	// update metadata cursor position
+	cursorPos += TableMetadataSize
+	cursorPos += int64(numColumns * ColumnMetadataSize)
+	SetMetadataCursorPos(conn.mapped, cursorPos, RIGHT)
 	return &newTable, nil
 }
 
