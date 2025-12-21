@@ -3,6 +3,7 @@ package main
 import (
 	"kendb/db"
 	"os"
+	"fmt"
 )
 
 func main() {
@@ -14,6 +15,7 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+	fmt.Println(conn.ListTableNames())
 	nice, err := me.AddColumn("foo", 2)
 	if err != nil {
 		os.Exit(1)
