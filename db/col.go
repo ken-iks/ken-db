@@ -77,22 +77,27 @@ func (column *Column) AddVector(timestamp int64, vector []float32) error {
 	return nil
 }
 
+func (column *Column) forEach(fn func(idx int64, ts uint64, vec []float32)) {
+    b := column.file.Bytes()
+    entrySize := 8 + (column.meta.vectorLength * 4)
+    idx := int64(0)
+
+    currChunk := column.meta.firstChunkOffset
+    for currChunk != 0 {
+        header := ReadChunkHeader(b, currChunk)
+        for i := int64(0); i < header.numVectors; i++ {
+            entryOffset := currChunk + ChunkHeaderSize + (i * entrySize)
+            ts := ByteOrder.Uint64(b[entryOffset:])
+            vec := readVec(b[entryOffset+8:], int(column.meta.vectorLength))
+            fn(idx, ts, vec)
+            idx++
+        }
+        currChunk = header.nextChunk
+    }
+}
+
 func (column *Column) PrintColumnEntries() {
-	b := column.file.Bytes()
-	vectorSize := column.meta.vectorLength * 4
-	entrySize := 8 + vectorSize
-
-	currChunk := column.meta.firstChunkOffset
-	for currChunk != 0 {
-		header := ReadChunkHeader(b, currChunk)
-
-		for i := int64(0); i < header.numVectors; i++ {
-			entryOffset := currChunk + ChunkHeaderSize + (i * entrySize)
-			ts := ByteOrder.Uint64(b[entryOffset:])
-			vec := readVec(b[entryOffset+8:], int(column.meta.vectorLength))
-			fmt.Println("Timestamp:", ts, "Vector:", vec)
-		}
-
-		currChunk = header.nextChunk // move to next chunk (0 if none)
-	}
+    column.forEach(func(idx int64, ts uint64, vec []float32) {
+        fmt.Println("Timestamp:", ts, "Vector:", vec)
+    })
 }
