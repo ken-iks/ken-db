@@ -16,9 +16,10 @@ const (
 	Int64Size = 8 // for timestamps
 	Float32Size = 4 // for values
 	NameSize  = 64
-	ColumnMetadataSize = 88 // Name + 3 int64
+	ColumnMetadataSize = 96 // Name + 4 int64
 	TableMetadataSize = 80  // Name + 2 int64
 	ChunkSize = 64 * 1024 * 1024
+	ChunkHeaderSize = 16
 )
 
 const (
@@ -38,6 +39,24 @@ const (
 // position, and the next 8 bytes are reserved for the number of
 // tables in the DB
 type MMap = mmap.MMap
+
+// Chunk header starts off each chunk
+type ChunkHeader struct {
+    nextChunk  int64  // offset of next chunk, 0 = last
+    numVectors int64  // how many vectors in THIS chunk
+}
+
+func ReadChunkHeader(b []byte, offset int64) ChunkHeader {
+	return ChunkHeader{
+		nextChunk: int64(ByteOrder.Uint64(b[offset:offset+8])),
+		numVectors: int64(ByteOrder.Uint64(b[offset+8:offset+16])),
+	}
+}
+
+func (header *ChunkHeader) WriteTo(b []byte, offset int64) {
+	ByteOrder.PutUint64(b[offset:], uint64(header.nextChunk))
+	ByteOrder.PutUint64(b[offset+8:], uint64(header.numVectors))
+}
 
 // Fixed size for a name
 type Name [64]byte
@@ -65,6 +84,7 @@ type ColumnMetadata struct {
 	vectorLength int64
 	numVectors int64
 	firstChunkOffset int64
+	offset int64
 }
 
 func ReadColumnMetadata(b []byte, offset int64) ColumnMetadata {
@@ -73,14 +93,17 @@ func ReadColumnMetadata(b []byte, offset int64) ColumnMetadata {
 		vectorLength: int64(ByteOrder.Uint64(b[offset+NameSize:offset+NameSize+8])),
 		numVectors: int64(ByteOrder.Uint64(b[offset+NameSize+8:offset+NameSize+16])),
 		firstChunkOffset: int64(ByteOrder.Uint64(b[offset+NameSize+16:offset+NameSize+24])),
+		offset: int64(ByteOrder.Uint64(b[offset+NameSize+24:offset+NameSize+32])),
 	}
 }
 
-func (meta *ColumnMetadata) WriteTo(b []byte, offset int64) {
+func (meta *ColumnMetadata) WriteTo(b []byte) {
+	offset := meta.offset
 	copy(b[offset:], meta.name[:])
 	ByteOrder.PutUint64(b[offset+NameSize:], uint64(meta.vectorLength))
 	ByteOrder.PutUint64(b[offset+NameSize+8:], uint64(meta.numVectors))
 	ByteOrder.PutUint64(b[offset+NameSize+16:], uint64(meta.firstChunkOffset))
+	ByteOrder.PutUint64(b[offset+NameSize+24:], uint64(meta.offset))
 }
 
 type TableMetadata struct {

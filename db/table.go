@@ -18,8 +18,9 @@ func (tbl *Table) AddColumn(colName string, vectorLength int64) (*Column, error)
 		vectorLength: vectorLength,
 		numVectors: 0,
 		firstChunkOffset: GetDataCursorPos(tbl.mapped),
+		offset: pos,
 	}
-	meta.WriteTo(tbl.mapped, pos)
+	meta.WriteTo(tbl.mapped)
 
 	newColumn := Column{
 		meta: meta,

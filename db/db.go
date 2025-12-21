@@ -19,7 +19,8 @@ func InitDB(filename string) (*DB, error) {
 	if os.IsNotExist(err) {
 		f, fileErr = os.Create(path)
 		// initialize the file with 4MB of space
-		f.Truncate(int64(os.Getpagesize() * 1024))
+		initialSize := DataRegionStart + ChunkSize
+		f.Truncate(int64(initialSize))
 	} else {
 		f, fileErr = os.OpenFile(path, os.O_RDWR, 0644)
 	}
