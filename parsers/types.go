@@ -9,9 +9,9 @@ type RecordURI struct {
 func (RecordURI) isRecord() {}
 
 type RecordEmbedding struct {
-	VideoID   string    `parquet:"Video_id"`
-	Timestamp int64     `parquet:"Timestamp"`
-	Embedding []float32 `parquet:"Embedding"`
+	VideoID   string `parquet:"name=Video_id"`
+	Timestamp int64  `parquet:"name=Timestamp"`
+	Embedding []byte `parquet:"name=Embedding"`
 }
 
 func (RecordEmbedding) isRecord() {}

@@ -46,6 +46,15 @@ func (tbl *Table) AddColumn(colName string, vectorLength int64) (*Column, error)
 	return &newColumn, nil
 }
 
+func (tbl *Table) GetColumnByName(name string) (*Column, bool) {
+	for _, col := range tbl.columns {
+		if col.meta.name.String()  == name {
+			return col, true
+		}
+	}
+	return nil, false
+}
+
 func (tbl *Table) ListColumnNames() []string {
 	names := []string{}
 	for _, col := range tbl.columns {
