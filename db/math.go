@@ -4,6 +4,47 @@ import (
 	"github.com/viterin/vek/vek32"
 )
 
+type DistanceCondition int
+const (
+	AVG DistanceCondition = iota
+	MAX
+	MIN
+)
+
+type ReducerCondition int
+const (
+	SUM ReducerCondition = iota
+	PROD
+)
+
+// TODO: finish building query parser by having a condition builder. This build will be separate from
+// the actual selecter - just does math. Select and fetch can be defined in query.go since they are to 
+// get the actual results. Maybe we eventually move here to give less work to the caller
+type Condition struct {
+
+}
+
+type QueryOptions struct {
+	floatarr []float32
+	single *Vector
+	raw *float32
+}
+
+func (o QueryOptions) GetArray() ([]float32, bool) {
+	if len(o.floatarr) > 0 {
+		return o.floatarr, true
+	}
+	return nil, false
+}
+
+func (o QueryOptions) GetVector() (Vector, bool) {
+	return *o.single, o.single != nil
+}
+
+func (o QueryOptions) GetRaw() (float32, bool) {
+	return *o.raw, o.raw != nil
+}
+
 // Returns the element-wise sum of all vectors in the set
 func (c *Column) Sum(varName string, pool VariablePool) []float32 {
 	return c.reduce(
