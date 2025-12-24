@@ -29,5 +29,10 @@ func main() {
 	vpool := db.VariablePool{}
 	nice.Select(1, 4, "blah", vpool)
 	fmt.Println(nice.Fetch("blah", vpool))
+	fmt.Println(nice.Sum("blah", vpool))
+	fmt.Println(nice.Prod("blah", vpool))
+	fmt.Println(nice.DistAvg("blah", vpool, []float32{10.,10.}))
+	fmt.Println(nice.DistMin("blah", vpool, []float32{10., 10.}))
+	fmt.Println(nice.DistMax("blah", vpool, []float32{10., 10.}))
 	conn.Close()
 }

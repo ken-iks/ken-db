@@ -4,7 +4,8 @@ import (
 	"github.com/viterin/vek/vek32"
 )
 
-func (c *Column) Sum(varName string, pool VariablePool) Vector {
+// Returns the element-wise sum of all vectors in the set
+func (c *Column) Sum(varName string, pool VariablePool) []float32 {
 	return c.reduce(
 		varName,
 		pool,
@@ -14,10 +15,11 @@ func (c *Column) Sum(varName string, pool VariablePool) Vector {
 				features:  vek32.Add(v1.features, v2.features),
 			}
 		},
-	)
+	).features
 }
 
-func (c *Column) Prod(varName string, pool VariablePool) Vector {
+// Returns the element-wise product of all vectors in the set
+func (c *Column) Prod(varName string, pool VariablePool) []float32 {
 	return c.reduce(
 		varName,
 		pool,
@@ -27,32 +29,20 @@ func (c *Column) Prod(varName string, pool VariablePool) Vector {
 				features:  vek32.Mul(v1.features, v2.features),
 			}
 		},
-	)
+	).features
 }
 
-func (c *Column) Avg(varName string, pool VariablePool) Vector {
-	sum := c.reduce(
-		varName,
-		pool,
-		func(v1, v2 Vector) Vector {
-			return Vector{
-				timestamp: 0,
-				features:  vek32.Add(v1.features, v2.features),
-			}
-		},
-	)
-	return Vector{
-		timestamp: 0,
-		features:  vek32.DivNumber(sum.features, float32(len(sum.features))),
-	}
+// Returns the average distance from the set of vectors to the target
+func (c *Column) DistAvg(varName string, pool VariablePool, target []float32) float32 {
+	// first compute general average - then compute similarity
+	// centroid distance is preffered to average of distances in the case of vector similarity
+	avg := c.avg(varName, pool)
+	return vek32.CosineSimilarity(avg, target)
 }
 
-func (c *Column) AvgDist(varName string, pool VariablePool, target []float32) float32 {
-	avg := c.Avg(varName, pool)
-	return vek32.CosineSimilarity(avg.features, target)
-}
-
-func (c *Column) MinDist(varName string, pool VariablePool, target []float32) Vector {
+// Returns the vector from the set with the minimum euclidean distance from the target
+// Return value has {features []float32, timestamp int64}
+func (c *Column) DistMin(varName string, pool VariablePool, target []float32) Vector {
 	return c.reduce(
 		varName,
 		pool,
@@ -65,7 +55,9 @@ func (c *Column) MinDist(varName string, pool VariablePool, target []float32) Ve
 	)
 }
 
-func (c *Column) MaxDist(varName string, pool VariablePool, target []float32) Vector {
+// Returns the vector from the set with the maximum euclidean distance from the target
+// Return value has {features []float32, timestamp int64}
+func (c *Column) DistMax(varName string, pool VariablePool, target []float32) Vector {
 	return c.reduce(
 		varName,
 		pool,
@@ -76,4 +68,20 @@ func (c *Column) MaxDist(varName string, pool VariablePool, target []float32) Ve
 			return v2
 		},
 	)
+}
+
+// Helper for computing the element-wise average of a set of variables
+// TODO: implement a running average (nice to have)
+func (c *Column) avg(varName string, pool VariablePool) []float32 {
+	sum := c.reduce(
+		varName,
+		pool,
+		func(v1, v2 Vector) Vector {
+			return Vector{
+				timestamp: 0,
+				features:  vek32.Add(v1.features, v2.features),
+			}
+		},
+	)
+	return vek32.DivNumber(sum.features, float32(len(sum.features)))
 }
