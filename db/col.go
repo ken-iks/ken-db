@@ -6,15 +6,16 @@ import (
 	"unsafe"
 )
 
-
 type Kind int
+
 const (
 	Bytes Kind = iota
 	Floats
 )
+
 type WriteColumnOptions struct {
-	Kind Kind
-	bytes []byte
+	Kind   Kind
+	bytes  []byte
 	floats []float32
 }
 
@@ -34,8 +35,6 @@ func (opts *WriteColumnOptions) AddFloats(f []float32) error {
 	return fmt.Errorf("Can only add floats to a float kind")
 }
 
-
-
 // returns the int64 length of the array for looping
 func safeParse(v WriteColumnOptions, vectorLength int64) (int64, error) {
 	switch v.Kind {
@@ -49,7 +48,7 @@ func safeParse(v WriteColumnOptions, vectorLength int64) (int64, error) {
 		return l * 4, nil
 	case Bytes:
 		l := int64(len(v.bytes))
-		if l != vectorLength * 4 {
+		if l != vectorLength*4 {
 			slog.Error("Illegal byte array trying to be added to column", "array length:", l)
 			return 0, fmt.Errorf("Bruh")
 		}
@@ -63,9 +62,9 @@ func safeParse(v WriteColumnOptions, vectorLength int64) (int64, error) {
 // This helper assumes that this vector has been validated and can be added
 // to the byte array at the beginning. Caller must give correct slice.
 func writeVec[T float32 | byte](b []byte, vec []T) {
-    size := int(unsafe.Sizeof(vec[0]))
-    src := unsafe.Slice((*byte)(unsafe.Pointer(&vec[0])), len(vec)*size)
-    copy(b, src)
+	size := int(unsafe.Sizeof(vec[0]))
+	src := unsafe.Slice((*byte)(unsafe.Pointer(&vec[0])), len(vec)*size)
+	copy(b, src)
 }
 
 // This helper reads directly from mmap with zero copy
