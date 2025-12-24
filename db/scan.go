@@ -1,6 +1,8 @@
 package db
 
-import "log/slog"
+import (
+	"log/slog"
+)
 
 // variable pool stores intermediate results during predicate evaluation
 // stored as a bit vector, where res[i] represents whether or not the vector
@@ -47,6 +49,45 @@ func (column *Column) Fetch(varName string, pool VariablePool) []Vector {
 					timestamp: ByteOrder.Uint64(b[entryOffset:]),
 					features:  readVec(b[entryOffset+8:], int(column.meta.vectorLength)),
 				})
+			}
+			idx++
+		}
+		currChunk = header.nextChunk
+	}
+	return retVec
+}
+
+// Reduce a the vector by the function provided
+// Performs the fucntion iteratively across vectors represented by the corresponding bitmap
+func (column *Column) reduce(varName string, pool VariablePool, fn func(v1, v2 Vector) Vector) Vector {
+	bitmap, ok := pool[varName]
+	var retVec Vector
+	first := true
+	if !ok {
+		slog.Error("Could not find variable in variable pool", "variable name", varName)
+		return retVec
+	}
+
+	b := column.file.Bytes()
+	vectorSize := column.meta.vectorLength * 4
+	entrySize := 8 + vectorSize
+
+	currChunk, idx := column.meta.firstChunkOffset, 0
+	for currChunk != 0 {
+		header := ReadChunkHeader(b, currChunk)
+		for i := int64(0); i < header.numVectors; i++ {
+			if bitmap[idx] {
+				entryOffset := currChunk + ChunkHeaderSize + (i * entrySize)
+				vec := Vector{
+					timestamp: ByteOrder.Uint64(b[entryOffset:]),
+					features:  readVec(b[entryOffset+8:], int(column.meta.vectorLength)),
+				}
+				if first {
+					retVec = vec
+					first = false
+				} else {
+					retVec = fn(vec, retVec)
+				}
 			}
 			idx++
 		}

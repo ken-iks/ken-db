@@ -101,3 +101,9 @@ func (column *Column) PrintColumnEntries() {
 		fmt.Println("Timestamp:", ts, "Vector:", vec)
 	})
 }
+
+// TODO: Implement some mathemtical functions - SUM, AVG, MIN, MAX
+// These will be both vector operations (so V1+V2) and intra vector (eg AVG of V1)
+// Also need a dot prod (vector distance)
+// logistic regression
+// method for adding a timestsamp row and for adding a table row and for adding a vector row (add vector for each column in table)
