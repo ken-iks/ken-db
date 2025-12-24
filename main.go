@@ -7,32 +7,9 @@ import (
 )
 
 func main() {
-	conn, err := db.InitDB("test")
-	if err != nil {
-		os.Exit(1)
-	}
-	me, err := conn.AddTable("cmon", 5)
+	conn, err := db.InitDB("v_10k")
 	if err != nil {
 		os.Exit(1)
 	}
 	fmt.Println(conn.ListTableNames())
-	nice, err := me.AddColumn("foo", 2)
-	if err != nil {
-		os.Exit(1)
-	}
-	nice.AddVector(0, []float32{5., 7.})
-	nice.AddVector(1, []float32{6., 6.})
-	nice.AddVector(2, []float32{7., 5.})
-	nice.AddVector(3, []float32{8., 4.})
-	nice.AddVector(4, []float32{9., 3.})
-	nice.PrintColumnEntries()
-	vpool := db.VariablePool{}
-	nice.Select(1, 4, "blah", vpool)
-	fmt.Println(nice.Fetch("blah", vpool))
-	fmt.Println(nice.Sum("blah", vpool))
-	fmt.Println(nice.Prod("blah", vpool))
-	fmt.Println(nice.DistAvg("blah", vpool, []float32{10.,10.}))
-	fmt.Println(nice.DistMin("blah", vpool, []float32{10., 10.}))
-	fmt.Println(nice.DistMax("blah", vpool, []float32{10., 10.}))
-	conn.Close()
 }

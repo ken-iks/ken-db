@@ -6,11 +6,66 @@ import (
 	"unsafe"
 )
 
+
+type Kind int
+const (
+	Bytes Kind = iota
+	Floats
+)
+type WriteColumnOptions struct {
+	Kind Kind
+	bytes []byte
+	floats []float32
+}
+
+func (opts *WriteColumnOptions) AddBytes(b []byte) error {
+	if opts.Kind == Bytes {
+		opts.bytes = b
+		return nil
+	}
+	return fmt.Errorf("Can only add bytes to a byte kind")
+}
+
+func (opts *WriteColumnOptions) AddFloats(f []float32) error {
+	if opts.Kind == Floats {
+		opts.floats = f
+		return nil
+	}
+	return fmt.Errorf("Can only add floats to a float kind")
+}
+
+
+
+// returns the int64 length of the array for looping
+func safeParse(v WriteColumnOptions, vectorLength int64) (int64, error) {
+	switch v.Kind {
+	case Floats:
+		l := int64(len(v.floats))
+		if l != vectorLength {
+			slog.Error("Cannot add vector to column", "Vector length: ", l, "Column vector length: ", vectorLength)
+			return 0, fmt.Errorf("Bruh")
+		}
+		// since floats are 4 bytes we multiply
+		return l * 4, nil
+	case Bytes:
+		l := int64(len(v.bytes))
+		if l != vectorLength * 4 {
+			slog.Error("Illegal byte array trying to be added to column", "array length:", l)
+			return 0, fmt.Errorf("Bruh")
+		}
+		return l, nil
+	default:
+		slog.Error("Unsupported vector type", "type", v.Kind)
+		return 0, fmt.Errorf("Bruh")
+	}
+}
+
 // This helper assumes that this vector has been validated and can be added
 // to the byte array at the beginning. Caller must give correct slice.
-func writeVec(b []byte, vec []float32) {
-	src := unsafe.Slice((*byte)(unsafe.Pointer(&vec[0])), len(vec)*4)
-	copy(b, src)
+func writeVec[T float32 | byte](b []byte, vec []T) {
+    size := int(unsafe.Sizeof(vec[0]))
+    src := unsafe.Slice((*byte)(unsafe.Pointer(&vec[0])), len(vec)*size)
+    copy(b, src)
 }
 
 // This helper reads directly from mmap with zero copy
@@ -19,11 +74,10 @@ func readVec(b []byte, length int) []float32 {
 	return unsafe.Slice((*float32)(unsafe.Pointer(&b[0])), length)
 }
 
-func (column *Column) AddVector(timestamp int64, vector []float32) error {
-	lenInt64 := int64(len(vector))
-	if column.meta.vectorLength != lenInt64 {
-		slog.Error("Cannot add vector to column", "Vector length: ", len(vector), "Column vector length: ", column.meta.vectorLength)
-		return fmt.Errorf("Bruh")
+func (column *Column) AddVector(timestamp int64, vector WriteColumnOptions) error {
+	lenInt64, err := safeParse(vector, column.meta.vectorLength)
+	if err != nil {
+		return err
 	}
 	b := column.file.Bytes()
 	chunkPos := column.meta.firstChunkOffset
@@ -34,10 +88,17 @@ func (column *Column) AddVector(timestamp int64, vector []float32) error {
 	}
 	entrySize := int64(8) + (column.meta.vectorLength * 4) // timestamp + vector
 	vectorPos := chunkPos + ChunkHeaderSize + (entrySize * header.numVectors)
-	if (vectorPos+(4*lenInt64))-chunkPos <= ChunkSize {
+	if (vectorPos+lenInt64+8)-chunkPos <= ChunkSize {
 		// we have enough space in this chunk to add the vector
 		ByteOrder.PutUint64(b[vectorPos:], uint64(timestamp))
-		writeVec(b[vectorPos+8:], vector)
+		switch vector.Kind {
+		case Bytes:
+			writeVec(b[vectorPos+8:], vector.bytes)
+		case Floats:
+			writeVec(b[vectorPos+8:], vector.floats)
+		default:
+			return fmt.Errorf("Bruh")
+		}
 		column.meta.numVectors++
 		header.numVectors++
 		// update mmap
@@ -66,7 +127,15 @@ func (column *Column) AddVector(timestamp int64, vector []float32) error {
 
 	// write vector
 	ByteOrder.PutUint64(b[newChunkPos+ChunkHeaderSize:], uint64(timestamp))
-	writeVec(b[newChunkPos+ChunkHeaderSize+8:], vector)
+	switch vector.Kind {
+	case Bytes:
+		writeVec(b[newChunkPos+ChunkHeaderSize+8:], vector.bytes)
+	case Floats:
+		writeVec(b[newChunkPos+ChunkHeaderSize+8:], vector.floats)
+	default:
+		return fmt.Errorf("Bruh")
+	}
+
 	// update mmap after successful write
 	newChunkHeader.numVectors++
 	column.meta.numVectors++
