@@ -145,7 +145,7 @@ func (column *Column) AddVector(timestamp int64, vector WriteColumnOptions) erro
 	return nil
 }
 
-func (column *Column) forEach(fn func(idx int64, ts uint64, vec []float32)) {
+func (column *Column) forEach(fn func(idx int64, ts uint64, vec []float32) bool) {
 	b := column.file.Bytes()
 	entrySize := 8 + (column.meta.vectorLength * 4)
 	idx := int64(0)
@@ -157,7 +157,9 @@ func (column *Column) forEach(fn func(idx int64, ts uint64, vec []float32)) {
 			entryOffset := currChunk + ChunkHeaderSize + (i * entrySize)
 			ts := ByteOrder.Uint64(b[entryOffset:])
 			vec := readVec(b[entryOffset+8:], int(column.meta.vectorLength))
-			fn(idx, ts, vec)
+			if !fn(idx, ts, vec) {
+				return
+			}
 			idx++
 		}
 		currChunk = header.nextChunk
@@ -165,9 +167,14 @@ func (column *Column) forEach(fn func(idx int64, ts uint64, vec []float32)) {
 }
 
 func (column *Column) PrintColumnEntries() {
-	column.forEach(func(idx int64, ts uint64, vec []float32) {
+	column.forEach(func(idx int64, ts uint64, vec []float32) bool {
 		fmt.Println("Timestamp:", ts, "Vector:", vec)
+		return true
 	})
+}
+
+func (column *Column) Length() int {
+	return int(column.meta.numVectors)
 }
 
 // TODO: Implement some mathemtical functions - SUM, AVG, MIN, MAX

@@ -15,12 +15,13 @@ type Vector struct {
 }
 
 func (column *Column) Select(startTs int64, endTs int64, varName string, pool VariablePool) {
-	column.forEach(func(idx int64, ts uint64, vec []float32) {
+	column.forEach(func(idx int64, ts uint64, vec []float32) bool {
 		if ts >= uint64(startTs) && ts < uint64(endTs) {
 			pool[varName] = append(pool[varName], true)
 		} else {
 			pool[varName] = append(pool[varName], false)
 		}
+		return true
 	})
 }
 
