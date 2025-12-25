@@ -8,11 +8,11 @@ import (
 
 func main() {
 	/*
-	err := parsers.ParseParquet("small.parquet", new(parsers.RecordEmbedding), 10)
-	if err != nil {
-		os.Exit(1)
-	}
-	fmt.Println("Success")*/
+		err := parsers.ParseParquet("small.parquet", new(parsers.RecordEmbedding), 10)
+		if err != nil {
+			os.Exit(1)
+		}
+		fmt.Println("Success")*/
 
 	conn, err := db.InitDB("small")
 	if err != nil {

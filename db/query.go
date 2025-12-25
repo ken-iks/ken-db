@@ -25,9 +25,10 @@ func ParseTargetQuery(q QueryBuilder, target []float32) *QueryOptions {
 
 type timestampRange struct {
 	start int64
-	end int64
+	end   int64
 	score float32
 }
+
 // Implementation of the ikeji algorithm on a column
 // Returns the variable name that the associated bitmap has been saved to
 func (col *Column) Ikeji(target []float32, pool VariablePool) string {
@@ -36,7 +37,7 @@ func (col *Column) Ikeji(target []float32, pool VariablePool) string {
 	bests := make([]timestampRange, col.Length())
 	col.forEach(func(idx int64, ts uint64, vec []float32) bool {
 		wg.Add(1)
-		go func (idx int64, target []float32, col *Column) {
+		go func(idx int64, target []float32, col *Column) {
 			defer wg.Done()
 			bests[idx] = ikejiRange(col, idx, target)
 		}(idx, target, col)
@@ -72,7 +73,7 @@ func ikejiRange(col *Column, startidx int64, target []float32) timestampRange {
 		if res < currbestScore {
 			currbestRange = timestampRange{
 				start: startidx,
-				end: idx,
+				end:   idx,
 				score: res,
 			}
 			// anytime if window n+1 is closer than window n, keep going, if not just stop

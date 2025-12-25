@@ -78,7 +78,7 @@ func ParseParquet(filename string, r Record, colCount int) error {
 					embedding := row[2].ByteArray()
 
 					slog.Info(
-						"Adding record", "VideoId=", videoID, "Timestamp=", timestamp, "Vector length=", len(embedding) / 4,
+						"Adding record", "VideoId=", videoID, "Timestamp=", timestamp, "Vector length=", len(embedding)/4,
 					)
 
 					// Skip any records with empty embeddings

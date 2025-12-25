@@ -257,4 +257,3 @@ func SetDataCursorPos(b []byte, v int64, dir Direction) {
 
 // centralized byte order for encodings
 var ByteOrder = binary.LittleEndian
-

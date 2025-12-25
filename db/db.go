@@ -101,7 +101,7 @@ func (conn *DB) AddTable(tablename string, numColumns int) (*Table, error) {
 
 func (conn *DB) GetTableByName(name string) (*Table, bool) {
 	for _, table := range conn.tables {
-		if table.meta.name.String()==name {
+		if table.meta.name.String() == name {
 			return table, true
 		}
 	}

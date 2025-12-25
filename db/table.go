@@ -48,7 +48,7 @@ func (tbl *Table) AddColumn(colName string, vectorLength int64) (*Column, error)
 
 func (tbl *Table) GetColumnByName(name string) (*Column, bool) {
 	for _, col := range tbl.columns {
-		if col.meta.name.String()  == name {
+		if col.meta.name.String() == name {
 			return col, true
 		}
 	}

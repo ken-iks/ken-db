@@ -1,6 +1,7 @@
 package db
 
 type QueryType int
+
 const (
 	IKEJI QueryType = iota
 )
@@ -12,10 +13,10 @@ type QueryBuilder struct {
 }
 
 type QueryOptions struct {
-	vectarr []Vector
+	vectarr  []Vector
 	floatarr []float32
-	single *Vector
-	raw *float32
+	single   *Vector
+	raw      *float32
 }
 
 func (o QueryOptions) GetArrayFloat() ([]float32, bool) {
